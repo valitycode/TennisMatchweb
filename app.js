@@ -1,6 +1,7 @@
 let currentMatch = null;
 let profiles = JSON.parse(localStorage.getItem("profiles") || "{}");
 let history = JSON.parse(localStorage.getItem("matchHistory") || "[]");
+let videos = JSON.parse(localStorage.getItem("sharedVideos") || "[]");
 let timerInterval = null;
 let pauseTimeout = null;
 
@@ -12,17 +13,20 @@ function showScreen(id) {
   if (id === "history") renderHistory();
   if (id === "stats") renderStats();
   if (id === "home") updateHome();
+  if (id === "videos") renderVideos();
 }
 
-// ---------------------------- PROFILS ----------------------------
-
+// PROFILS
 function createProfile() {
   const name = document.getElementById("newProfileName").value.trim();
   const country = document.getElementById("newProfileCountry").value.trim().toUpperCase();
   const surface = document.getElementById("newProfileSurface").value;
 
   if (!name || !country) return alert("Champs obligatoires !");
-  profiles[name] = profiles[name] || { wins: 0, losses: 0, timePlayed: 0, surface };
+  profiles[name] = profiles[name] || {
+    wins: 0, losses: 0, timePlayed: 0, surface,
+    aces: 0, doubles: 0
+  };
   profiles[name].country = country;
   profiles[name].surface = surface;
 
@@ -57,8 +61,32 @@ function updateProfileSelectors() {
   }
 }
 
-// ---------------------------- MATCH ----------------------------
+// VIDÉOS
+function addVideo() {
+  const url = document.getElementById("videoUrl").value.trim();
+  if (!url) return alert("Lien invalide");
+  videos.push(url);
+  localStorage.setItem("sharedVideos", JSON.stringify(videos));
+  renderVideos();
+  document.getElementById("videoUrl").value = "";
+}
 
+function renderVideos() {
+  const div = document.getElementById("videoList");
+  div.innerHTML = "";
+  videos.slice().reverse().forEach(link => {
+    let el;
+    if (link.includes("youtube") || link.includes("youtu.be")) {
+      const embed = link.replace("watch?v=", "embed/");
+      el = `<iframe src="${embed}" allowfullscreen></iframe>`;
+    } else if (link.endsWith(".mp4")) {
+      el = `<video controls src="${link}"></video>`;
+    } else {
+      el = `<a href="${link}" target="_blank">${link}</a>`;
+    }
+    div.innerHTML += el;
+  });
+}
 function startMatch() {
   const p1Name = document.getElementById("profile1Select").value;
   const p2Name = document.getElementById("profile2Select").value;
@@ -68,7 +96,7 @@ function startMatch() {
   const type = document.getElementById("matchType").value;
   const pauseDuration = +document.getElementById("pauseDuration").value;
 
-  if (!p1Name || !p2Name) return alert("Sélectionne deux profils");
+  if (!p1Name || !p2Name) return alert("Choisis deux profils");
 
   currentMatch = {
     p1: { name: p1Name, score: 0, games: 0, sets: 0 },
@@ -78,13 +106,14 @@ function startMatch() {
     advantage,
     type,
     pauseDuration,
+    server: 1,
     timer: 0
   };
 
   document.getElementById("matchTitle").textContent = `${p1Name} vs ${p2Name}`;
-  updateScoreDisplay();
   matchStartTime = Date.now();
   timerInterval = setInterval(updateTimer, 1000);
+  updateScoreDisplay();
   showScreen("match");
 }
 
@@ -96,73 +125,18 @@ function updateTimer() {
   document.getElementById("matchTimer").textContent = `⏱️ ${minutes}:${seconds}`;
 }
 
-function point(player) {
-  const p = player === 1 ? currentMatch.p1 : currentMatch.p2;
-  const o = player === 1 ? currentMatch.p2 : currentMatch.p1;
-
-  const scoreOrder = ["0", "15", "30", "40", "A"];
-  let ps = p.score, os = o.score;
-
-  if (ps === "A") {
-    winGame(player);
-  } else if (ps === "40" && os !== "40") {
-    winGame(player);
-  } else if (ps === "40" && os === "40") {
-    if (currentMatch.advantage) {
-      p.score = "A";
-    } else {
-      winGame(player);
-    }
-  } else if (ps === undefined) {
-    p.score = "15";
-  } else {
-    const idx = scoreOrder.indexOf(ps);
-    p.score = scoreOrder[idx + 1] || "40";
-  }
-
-  updateScoreDisplay();
+function speak(text) {
+  const synth = window.speechSynthesis;
+  if (!synth) return;
+  const utterance = new SpeechSynthesisUtterance(text);
+  synth.speak(utterance);
 }
-
-function winGame(player) {
-  const p = player === 1 ? currentMatch.p1 : currentMatch.p2;
-  const o = player === 1 ? currentMatch.p2 : currentMatch.p1;
-
-  p.games++;
-  p.score = o.score = 0;
-
-  if (p.games >= currentMatch.gamesToWin && (p.games - o.games) >= 2) {
-    p.sets++;
-    currentMatch.p1.games = currentMatch.p2.games = 0;
-  }
-
-  if (p.sets >= currentMatch.setsToWin) {
-    endMatch(player);
-    return;
-  }
-
-  updateScoreDisplay();
-}
-
-function updateScoreDisplay() {
-  document.getElementById("p1Name").textContent = currentMatch.p1.name;
-  document.getElementById("p2Name").textContent = currentMatch.p2.name;
-  document.getElementById("scoreP1").textContent = currentMatch.p1.score || "0";
-  document.getElementById("scoreP2").textContent = currentMatch.p2.score || "0";
-  document.getElementById("p1Games").textContent = currentMatch.p1.games;
-  document.getElementById("p2Games").textContent = currentMatch.p2.games;
-  document.getElementById("p1Sets").textContent = currentMatch.p1.sets;
-  document.getElementById("p2Sets").textContent = currentMatch.p2.sets;
-  document.getElementById("p1Surface").textContent = profiles[currentMatch.p1.name].surface;
-  document.getElementById("p2Surface").textContent = profiles[currentMatch.p2.name].surface;
-}
-
-// ---------------------------- PAUSE ----------------------------
 
 function togglePause() {
   const pauseEl = document.getElementById("pauseTimer");
   pauseEl.classList.remove("hidden");
   const matchDiv = document.getElementById("fullScoreboard");
-  matchDiv.style.opacity = "0.2";
+  matchDiv.style.opacity = "0.3";
 
   let remaining = currentMatch.pauseDuration;
   pauseEl.textContent = `⏸️ Pause : ${remaining}s`;
@@ -179,8 +153,78 @@ function togglePause() {
   }, 1000);
 }
 
-// ---------------------------- FIN DE MATCH ----------------------------
+function point(player) {
+  const p = player === 1 ? currentMatch.p1 : currentMatch.p2;
+  const o = player === 1 ? currentMatch.p2 : currentMatch.p1;
 
+  const scoreOrder = ["0", "15", "30", "40", "A"];
+  let ps = p.score || "0", os = o.score || "0";
+
+  if (ps === "A") {
+    winGame(player);
+    return;
+  }
+
+  if (ps === "40" && os !== "40") {
+    winGame(player);
+    return;
+  }
+
+  if (ps === "40" && os === "40") {
+    if (currentMatch.advantage) {
+      p.score = "A";
+    } else {
+      winGame(player);
+    }
+  } else {
+    const idx = scoreOrder.indexOf(ps);
+    p.score = scoreOrder[idx + 1] || "40";
+  }
+
+  speak(`${p.name} : ${p.score}`);
+  updateScoreDisplay();
+}
+
+function winGame(player) {
+  const p = player === 1 ? currentMatch.p1 : currentMatch.p2;
+  const o = player === 1 ? currentMatch.p2 : currentMatch.p1;
+
+  p.games++;
+  p.score = o.score = 0;
+  currentMatch.server = currentMatch.server === 1 ? 2 : 1;
+
+  if (p.games >= currentMatch.gamesToWin && p.games - o.games >= 2) {
+    p.sets++;
+    currentMatch.p1.games = currentMatch.p2.games = 0;
+    speak(`Jeu, set pour ${p.name}`);
+  } else {
+    speak(`Jeu ${p.name}`);
+  }
+
+  if (p.sets >= currentMatch.setsToWin) {
+    endMatch(player);
+    return;
+  }
+
+  updateScoreDisplay();
+}
+
+function updateScoreDisplay() {
+  const p1 = currentMatch.p1, p2 = currentMatch.p2;
+  document.getElementById("p1Name").textContent = p1.name;
+  document.getElementById("p2Name").textContent = p2.name;
+  document.getElementById("scoreP1").textContent = p1.score || "0";
+  document.getElementById("scoreP2").textContent = p2.score || "0";
+  document.getElementById("p1Games").textContent = p1.games;
+  document.getElementById("p2Games").textContent = p2.games;
+  document.getElementById("p1Sets").textContent = p1.sets;
+  document.getElementById("p2Sets").textContent = p2.sets;
+  document.getElementById("p1Surface").textContent = profiles[p1.name].surface;
+  document.getElementById("p2Surface").textContent = profiles[p2.name].surface;
+
+  document.getElementById("serveP1").textContent = currentMatch.server === 1 ? "🎾" : "";
+  document.getElementById("serveP2").textContent = currentMatch.server === 2 ? "🎾" : "";
+}
 function endMatch(winnerIndex = null) {
   clearInterval(timerInterval);
   if (!winnerIndex) {
@@ -216,8 +260,6 @@ function endMatch(winnerIndex = null) {
   }, 3000);
 }
 
-// ---------------------------- STATS / HISTORIQUE / ACCUEIL ----------------------------
-
 function renderHistory() {
   const ul = document.getElementById("historyList");
   ul.innerHTML = "";
@@ -233,8 +275,11 @@ function renderStats() {
   div.innerHTML = "";
   for (const name in profiles) {
     const p = profiles[name];
+    const winRate = p.wins + p.losses > 0 ? Math.round(100 * p.wins / (p.wins + p.losses)) : 0;
     const el = document.createElement("div");
-    el.textContent = `${name} – V:${p.wins} D:${p.losses} – Temps: ${formatTime(p.timePlayed || 0)}`;
+    el.innerHTML = `<strong>${name}</strong> | V:${p.wins} D:${p.losses} (${winRate}%)<br/>
+      Temps total : ${formatTime(p.timePlayed || 0)}<br/>
+      Surface : ${p.surface}`;
     div.appendChild(el);
   }
 }
@@ -269,7 +314,7 @@ function formatTime(seconds) {
   return `${m}:${s}`;
 }
 
-// Init
+// INIT
 window.addEventListener("DOMContentLoaded", () => {
   updateProfileSelectors();
   showScreen("home");
