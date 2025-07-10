@@ -1,246 +1,276 @@
+let currentMatch = null;
 let profiles = JSON.parse(localStorage.getItem("profiles") || "{}");
 let history = JSON.parse(localStorage.getItem("matchHistory") || "[]");
-
-let currentMatch = {
-    p1: null,
-    p2: null,
-    score: [0, 0],
-    games: [0, 0],
-    sets: [0, 0],
-    config: {},
-    timer: 0,
-    interval: null
-};
+let timerInterval = null;
+let pauseTimeout = null;
 
 function showScreen(id) {
-    document.querySelectorAll(".screen").forEach(s => s.classList.add("hidden"));
-    document.getElementById(id).classList.remove("hidden");
-    if (id === "profile") updateProfileList();
-    if (id === "history") renderHistory();
-    if (id === "stats") renderStats();
+  document.querySelectorAll(".screen").forEach(s => s.classList.add("hidden"));
+  document.getElementById(id).classList.remove("hidden");
+
+  if (id === "profile") renderProfiles();
+  if (id === "history") renderHistory();
+  if (id === "stats") renderStats();
+  if (id === "home") updateHome();
 }
+
+// ---------------------------- PROFILS ----------------------------
 
 function createProfile() {
-    const name = document.getElementById("newProfileName").value.trim();
-    if (!name) return alert("Nom obligatoire");
-    profiles[name] = {
-        name,
-        country: document.getElementById("newProfileCountry").value.toUpperCase(),
-        surface: document.getElementById("newProfileSurface").value,
-        wins: 0,
-        losses: 0,
-        timePlayed: 0
-    };
-    localStorage.setItem("profiles", JSON.stringify(profiles));
-    updateProfileList();
-    updateProfileSelectors();
+  const name = document.getElementById("newProfileName").value.trim();
+  const country = document.getElementById("newProfileCountry").value.trim().toUpperCase();
+  const surface = document.getElementById("newProfileSurface").value;
+
+  if (!name || !country) return alert("Champs obligatoires !");
+  profiles[name] = profiles[name] || { wins: 0, losses: 0, timePlayed: 0, surface };
+  profiles[name].country = country;
+  profiles[name].surface = surface;
+
+  localStorage.setItem("profiles", JSON.stringify(profiles));
+  renderProfiles();
+  updateProfileSelectors();
 }
 
-function updateProfileList() {
-    const ul = document.getElementById("profileList");
-    ul.innerHTML = "";
-    for (let key in profiles) {
-        const p = profiles[key];
-        const li = document.createElement("li");
-        li.innerText = `${p.name} (${p.country}) - Surface: ${p.surface}, ${p.wins}V / ${p.losses}D, ${Math.floor(p.timePlayed / 60)}min`;
-        ul.appendChild(li);
-    }
+function renderProfiles() {
+  const ul = document.getElementById("profileList");
+  ul.innerHTML = "";
+  for (const name in profiles) {
+    const p = profiles[name];
+    const li = document.createElement("li");
+    li.textContent = `${name} (${p.country}) - ${p.surface} | ${p.wins}V-${p.losses}D`;
+    ul.appendChild(li);
+  }
 }
 
 function updateProfileSelectors() {
-    const sel1 = document.getElementById("profile1Select");
-    const sel2 = document.getElementById("profile2Select");
-    sel1.innerHTML = sel2.innerHTML = "";
-    for (let key in profiles) {
-        const opt = document.createElement("option");
-        opt.value = key;
-        opt.innerText = key;
-        sel1.appendChild(opt.cloneNode(true));
-        sel2.appendChild(opt.cloneNode(true));
-    }
+  const sel1 = document.getElementById("profile1Select");
+  const sel2 = document.getElementById("profile2Select");
+  sel1.innerHTML = "";
+  sel2.innerHTML = "";
+  for (const name in profiles) {
+    [sel1, sel2].forEach(sel => {
+      const opt = document.createElement("option");
+      opt.value = name;
+      opt.textContent = `${name} (${profiles[name].country})`;
+      sel.appendChild(opt);
+    });
+  }
 }
+
+// ---------------------------- MATCH ----------------------------
 
 function startMatch() {
-    const p1Key = document.getElementById("profile1Select").value;
-    const p2Key = document.getElementById("profile2Select").value;
-    if (!profiles[p1Key] || !profiles[p2Key]) return alert("Sélectionne deux profils");
+  const p1Name = document.getElementById("profile1Select").value;
+  const p2Name = document.getElementById("profile2Select").value;
+  const sets = +document.getElementById("numSets").value;
+  const gamesPerSet = +document.getElementById("gamesPerSet").value;
+  const advantage = document.getElementById("advantage").value === "true";
+  const type = document.getElementById("matchType").value;
+  const pauseDuration = +document.getElementById("pauseDuration").value;
 
-    currentMatch.p1 = profiles[p1Key];
-    currentMatch.p2 = profiles[p2Key];
-    currentMatch.score = [0, 0];
-    currentMatch.games = [0, 0];
-    currentMatch.sets = [0, 0];
-    currentMatch.timer = 0;
-    clearInterval(currentMatch.interval);
+  if (!p1Name || !p2Name) return alert("Sélectionne deux profils");
 
-    currentMatch.config = {
-        setsToWin: parseInt(document.getElementById("numSets").value),
-        gamesPerSet: parseInt(document.getElementById("gamesPerSet").value),
-        advantage: document.getElementById("advantage").value === "true",
-        matchType: document.getElementById("matchType").value,
-        pauseDuration: parseInt(document.getElementById("pauseDuration").value)
-    };
+  currentMatch = {
+    p1: { name: p1Name, score: 0, games: 0, sets: 0 },
+    p2: { name: p2Name, score: 0, games: 0, sets: 0 },
+    setsToWin: sets,
+    gamesToWin: gamesPerSet,
+    advantage,
+    type,
+    pauseDuration,
+    timer: 0
+  };
 
-    document.getElementById("matchTitle").innerText =
-        `${currentMatch.p1.name} (${flag(currentMatch.p1.country)}) vs ${currentMatch.p2.name} (${flag(currentMatch.p2.country)})`;
-
-    document.getElementById("p1Name").innerText = currentMatch.p1.name;
-    document.getElementById("p2Name").innerText = currentMatch.p2.name;
-
-    updateScoreDisplay();
-    showScreen("match");
-    startChrono();
+  document.getElementById("matchTitle").textContent = `${p1Name} vs ${p2Name}`;
+  updateScoreDisplay();
+  matchStartTime = Date.now();
+  timerInterval = setInterval(updateTimer, 1000);
+  showScreen("match");
 }
 
-function flag(code) {
-    return code.toUpperCase().replace(/./g, c => String.fromCodePoint(127397 + c.charCodeAt()));
+function updateTimer() {
+  if (!currentMatch) return;
+  currentMatch.timer++;
+  const minutes = String(Math.floor(currentMatch.timer / 60)).padStart(2, "0");
+  const seconds = String(currentMatch.timer % 60).padStart(2, "0");
+  document.getElementById("matchTimer").textContent = `⏱️ ${minutes}:${seconds}`;
+}
+
+function point(player) {
+  const p = player === 1 ? currentMatch.p1 : currentMatch.p2;
+  const o = player === 1 ? currentMatch.p2 : currentMatch.p1;
+
+  const scoreOrder = ["0", "15", "30", "40", "A"];
+  let ps = p.score, os = o.score;
+
+  if (ps === "A") {
+    winGame(player);
+  } else if (ps === "40" && os !== "40") {
+    winGame(player);
+  } else if (ps === "40" && os === "40") {
+    if (currentMatch.advantage) {
+      p.score = "A";
+    } else {
+      winGame(player);
+    }
+  } else if (ps === undefined) {
+    p.score = "15";
+  } else {
+    const idx = scoreOrder.indexOf(ps);
+    p.score = scoreOrder[idx + 1] || "40";
+  }
+
+  updateScoreDisplay();
+}
+
+function winGame(player) {
+  const p = player === 1 ? currentMatch.p1 : currentMatch.p2;
+  const o = player === 1 ? currentMatch.p2 : currentMatch.p1;
+
+  p.games++;
+  p.score = o.score = 0;
+
+  if (p.games >= currentMatch.gamesToWin && (p.games - o.games) >= 2) {
+    p.sets++;
+    currentMatch.p1.games = currentMatch.p2.games = 0;
+  }
+
+  if (p.sets >= currentMatch.setsToWin) {
+    endMatch(player);
+    return;
+  }
+
+  updateScoreDisplay();
 }
 
 function updateScoreDisplay() {
-    const labels = ["0", "15", "30", "40", "Adv"];
-    const [s1, s2] = currentMatch.score;
-    const [g1, g2] = currentMatch.games;
-    const [t1, t2] = currentMatch.sets;
-
-    document.getElementById("scoreP1").innerText = labels[s1] || "Jeu";
-    document.getElementById("scoreP2").innerText = labels[s2] || "Jeu";
-    document.getElementById("p1Games").innerText = g1;
-    document.getElementById("p2Games").innerText = g2;
-    document.getElementById("p1Sets").innerText = t1;
-    document.getElementById("p2Sets").innerText = t2;
+  document.getElementById("p1Name").textContent = currentMatch.p1.name;
+  document.getElementById("p2Name").textContent = currentMatch.p2.name;
+  document.getElementById("scoreP1").textContent = currentMatch.p1.score || "0";
+  document.getElementById("scoreP2").textContent = currentMatch.p2.score || "0";
+  document.getElementById("p1Games").textContent = currentMatch.p1.games;
+  document.getElementById("p2Games").textContent = currentMatch.p2.games;
+  document.getElementById("p1Sets").textContent = currentMatch.p1.sets;
+  document.getElementById("p2Sets").textContent = currentMatch.p2.sets;
+  document.getElementById("p1Surface").textContent = profiles[currentMatch.p1.name].surface;
+  document.getElementById("p2Surface").textContent = profiles[currentMatch.p2.name].surface;
 }
 
-function point(playerIndex) {
-    const opponent = playerIndex === 1 ? 1 : 0;
-    const p = playerIndex - 1;
-    const o = opponent;
-
-    const [s1, s2] = currentMatch.score;
-
-    // Win outright
-    if (currentMatch.score[p] === 3 && currentMatch.score[o] < 3) {
-        winGame(playerIndex);
-        return;
-    }
-
-    // Deuce / Advantage logic
-    if (s1 >= 3 && s2 >= 3) {
-        if (!currentMatch.config.advantage || currentMatch.config.matchType === "double") {
-            winGame(playerIndex);
-            return;
-        }
-
-        if (currentMatch.score[p] === 4) {
-            winGame(playerIndex);
-        } else if (currentMatch.score[o] === 4) {
-            currentMatch.score[o] = 3;
-        } else {
-            currentMatch.score[p]++;
-        }
-    } else {
-        currentMatch.score[p]++;
-    }
-
-    updateScoreDisplay();
-}
-
-function winGame(playerIndex) {
-    const p = playerIndex - 1;
-    currentMatch.games[p]++;
-    currentMatch.score = [0, 0];
-
-    if (currentMatch.games[p] >= currentMatch.config.gamesPerSet) {
-        currentMatch.sets[p]++;
-        currentMatch.games = [0, 0];
-
-        if (currentMatch.sets[p] >= currentMatch.config.setsToWin) {
-            endMatch(playerIndex);
-            return;
-        }
-    }
-
-    updateScoreDisplay();
-}
+// ---------------------------- PAUSE ----------------------------
 
 function togglePause() {
-    const timerDiv = document.getElementById("pauseTimer");
-    const scoreboard = document.getElementById("fullScoreboard");
-    const sound = document.getElementById("bipSound");
+  const pauseEl = document.getElementById("pauseTimer");
+  pauseEl.classList.remove("hidden");
+  const matchDiv = document.getElementById("fullScoreboard");
+  matchDiv.style.opacity = "0.2";
 
-    let time = currentMatch.config.pauseDuration;
-    timerDiv.innerText = `⏸ Pause : ${time}s`;
-    timerDiv.classList.remove("hidden");
-    scoreboard.style.position = "absolute";
-    scoreboard.style.top = "10px";
-    scoreboard.style.right = "10px";
+  let remaining = currentMatch.pauseDuration;
+  pauseEl.textContent = `⏸️ Pause : ${remaining}s`;
 
-    const pauseInterval = setInterval(() => {
-        time--;
-        timerDiv.innerText = `⏸ Pause : ${time}s`;
-        if (time <= 0) {
-            clearInterval(pauseInterval);
-            timerDiv.classList.add("hidden");
-            scoreboard.style.position = "static";
-            sound.play();
-        }
-    }, 1000);
+  pauseTimeout = setInterval(() => {
+    remaining--;
+    pauseEl.textContent = `⏸️ Pause : ${remaining}s`;
+    if (remaining <= 0) {
+      clearInterval(pauseTimeout);
+      pauseEl.classList.add("hidden");
+      matchDiv.style.opacity = "1";
+      document.getElementById("bipSound").play();
+    }
+  }, 1000);
 }
 
-function startChrono() {
-    const timerDiv = document.getElementById("matchTimer");
-    currentMatch.interval = setInterval(() => {
-        currentMatch.timer++;
-        const min = String(Math.floor(currentMatch.timer / 60)).padStart(2, "0");
-        const sec = String(currentMatch.timer % 60).padStart(2, "0");
-        timerDiv.innerText = `⏱️ ${min}:${sec}`;
-    }, 1000);
-}
+// ---------------------------- FIN DE MATCH ----------------------------
 
 function endMatch(winnerIndex = null) {
-    clearInterval(currentMatch.interval);
-    if (winnerIndex !== null) {
-        const winner = winnerIndex === 1 ? currentMatch.p1 : currentMatch.p2;
-        const loser = winnerIndex === 1 ? currentMatch.p2 : currentMatch.p1;
+  clearInterval(timerInterval);
+  if (!winnerIndex) {
+    showScreen("home");
+    return;
+  }
 
-        profiles[winner.name].wins++;
-        profiles[loser.name].losses++;
-        profiles[winner.name].timePlayed += currentMatch.timer;
-        profiles[loser.name].timePlayed += currentMatch.timer;
+  const winner = winnerIndex === 1 ? currentMatch.p1 : currentMatch.p2;
+  const loser = winnerIndex === 1 ? currentMatch.p2 : currentMatch.p1;
 
-        history.push({
-            date: new Date().toLocaleString(),
-            winner: winner.name,
-            loser: loser.name,
-            duration: currentMatch.timer
-        });
+  profiles[winner.name].wins++;
+  profiles[loser.name].losses++;
+  profiles[winner.name].timePlayed += currentMatch.timer;
+  profiles[loser.name].timePlayed += currentMatch.timer;
 
-        localStorage.setItem("profiles", JSON.stringify(profiles));
-        localStorage.setItem("matchHistory", JSON.stringify(history));
+  history.push({
+    date: new Date().toLocaleString(),
+    winner: winner.name,
+    loser: loser.name,
+    duration: currentMatch.timer
+  });
 
-        alert(`🏆 Victoire de ${winner.name} !`);
-    }
+  localStorage.setItem("profiles", JSON.stringify(profiles));
+  localStorage.setItem("matchHistory", JSON.stringify(history));
 
-    showScreen("menu");
+  const popup = document.getElementById("winnerPopup");
+  popup.innerText = `🏆 Victoire de ${winner.name} !`;
+  popup.style.display = "block";
+
+  setTimeout(() => {
+    popup.style.display = "none";
+    showScreen("home");
+  }, 3000);
 }
 
+// ---------------------------- STATS / HISTORIQUE / ACCUEIL ----------------------------
+
 function renderHistory() {
-    const ul = document.getElementById("historyList");
-    ul.innerHTML = "";
-    history.slice().reverse().forEach(item => {
-        const li = document.createElement("li");
-        li.innerText = `${item.date} – ${item.winner} a battu ${item.loser} (${Math.floor(item.duration / 60)}min)`;
-        ul.appendChild(li);
-    });
+  const ul = document.getElementById("historyList");
+  ul.innerHTML = "";
+  history.slice().reverse().forEach(match => {
+    const li = document.createElement("li");
+    li.textContent = `${match.date} : ${match.winner} bat ${match.loser} (${formatTime(match.duration)})`;
+    ul.appendChild(li);
+  });
 }
 
 function renderStats() {
-    const div = document.getElementById("statsContent");
-    div.innerHTML = "";
-    for (let key in profiles) {
-        const p = profiles[key];
-        const ratio = p.wins + p.losses > 0 ? Math.round((p.wins / (p.wins + p.losses)) * 100) : 0;
-        const line = document.createElement("p");
-        line.innerText = `${p.name} – ${p.wins}V / ${p.losses}D – ${ratio}% – ${Math.floor(p.timePlayed / 60)}min`;
-        div.appendChild(line);
-    }
+  const div = document.getElementById("statsContent");
+  div.innerHTML = "";
+  for (const name in profiles) {
+    const p = profiles[name];
+    const el = document.createElement("div");
+    el.textContent = `${name} – V:${p.wins} D:${p.losses} – Temps: ${formatTime(p.timePlayed || 0)}`;
+    div.appendChild(el);
+  }
 }
+
+function updateHome() {
+  const info = document.getElementById("liveMatchInfo");
+  const last = document.getElementById("lastMatchResult");
+  if (currentMatch) {
+    info.textContent = `${currentMatch.p1.name} ${currentMatch.p1.sets}-${currentMatch.p2.sets} ${currentMatch.p2.name}`;
+  } else {
+    info.textContent = "Aucun match en cours";
+  }
+
+  const lastMatch = history[history.length - 1];
+  if (lastMatch) {
+    last.textContent = `${lastMatch.winner} bat ${lastMatch.loser} (${formatTime(lastMatch.duration)})`;
+  } else {
+    last.textContent = "Aucun match encore joué";
+  }
+
+  const quickStats = document.getElementById("quickStats");
+  quickStats.innerHTML = "";
+  for (const name in profiles) {
+    const p = profiles[name];
+    quickStats.innerHTML += `<div>${name}: ${p.wins}V / ${p.losses}D</div>`;
+  }
+}
+
+function formatTime(seconds) {
+  const m = String(Math.floor(seconds / 60)).padStart(2, "0");
+  const s = String(seconds % 60).padStart(2, "0");
+  return `${m}:${s}`;
+}
+
+// Init
+window.addEventListener("DOMContentLoaded", () => {
+  updateProfileSelectors();
+  showScreen("home");
+});
