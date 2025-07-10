@@ -4,6 +4,9 @@
   <meta charset="UTF-8" />
   <title>Tennis Match</title>
   <link rel="stylesheet" href="style.css" />
+  <link rel="manifest" href="manifest.json" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#0f0f0f" />
 </head>
 <body>
 
@@ -142,6 +145,17 @@
   <ul id="profileList"></ul>
 </section>
 
+<!-- Popup Victoire -->
+<div id="winnerPopup">🏆 Victoire !</div>
+
 <script src="app.js"></script>
+<script>
+  // Enregistrement PWA
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('service-worker.js').then(() => {
+      console.log('✅ Service worker prêt (PWA)');
+    });
+  }
+</script>
 </body>
 </html>
