@@ -2,118 +2,98 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Tennis Match</title>
+  <meta name="theme-color" content="#0f0f0f" />
   <link rel="stylesheet" href="style.css" />
   <link rel="manifest" href="manifest.json" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="theme-color" content="#0f0f0f" />
+  <link rel="icon" href="icon-192.png" type="image/png" />
 </head>
 <body>
 
-<!-- SPLASH ANIMÉ -->
+<!-- Splash screen -->
 <div id="animatedSplash">
   <div class="ball"></div>
   <div class="splash-title">
     <span>T</span><span>E</span><span>N</span><span>N</span><span>I</span><span>S</span>
-    <span class="space"></span>
     <span>M</span><span>A</span><span>T</span><span>C</span><span>H</span>
   </div>
 </div>
 
-<!-- NAVIGATION -->
+<!-- Barre de navigation -->
 <nav>
   <button onclick="showScreen('home')">🏠 Accueil</button>
-  <button onclick="showScreen('newmatch')">➕ Nouveau match</button>
-  <button onclick="showScreen('match')">🎾 Match</button>
+  <button onclick="showScreen('newmatch')">🎾 Nouveau Match</button>
+  <button onclick="showScreen('match')">🎮 Match</button>
   <button onclick="showScreen('stats')">📊 Stats</button>
   <button onclick="showScreen('history')">🧾 Historique</button>
   <button onclick="showScreen('profile')">👤 Profils</button>
+  <button onclick="showScreen('videos')">📹 Vidéos</button>
 </nav>
 
 <!-- ACCUEIL -->
 <section id="home" class="screen">
-  <h1>🏠 Tableau de bord</h1>
-  <h2>🎮 Match en cours</h2>
-  <div id="liveMatchInfo">Aucun match en cours</div>
-  <h2>✅ Dernier résultat</h2>
-  <div id="lastMatchResult">Aucun match joué pour l’instant</div>
-  <h2>📊 Statistiques rapides</h2>
+  <h1>🏠 Accueil</h1>
+  <div id="liveMatchInfo"></div>
+  <div id="lastMatchResult"></div>
   <div id="quickStats"></div>
 </section>
 
 <!-- NOUVEAU MATCH -->
 <section id="newmatch" class="screen hidden">
-  <h1>➕ Nouveau match</h1>
-  <h3>Joueur 1</h3>
-  <select id="profile1Select"></select>
-  <h3>Joueur 2</h3>
-  <select id="profile2Select"></select>
-  <h3>Paramètres</h3>
-  <label>Type:
-    <select id="matchType">
-      <option value="simple">Simple</option>
-      <option value="double">Double</option>
-    </select>
-  </label><br />
-  <label>Sets à gagner:
-    <select id="numSets">
-      <option value="2">2</option>
-      <option value="3">3</option>
-    </select>
-  </label><br />
-  <label>Jeux par set:
-    <select id="gamesPerSet">
-      <option value="2">2</option>
-      <option value="3">3</option>
-      <option value="6">6</option>
-    </select>
-  </label><br />
-  <label>Avantage:
-    <select id="advantage">
-      <option value="true">Oui</option>
-      <option value="false">Non</option>
-    </select>
-  </label><br />
-  <label>Pause (secondes): <input type="number" id="pauseDuration" value="90" /></label><br />
+  <h2>Nouveau match</h2>
+  <label>Joueur 1 : <select id="profile1Select"></select></label><br/>
+  <label>Joueur 2 : <select id="profile2Select"></select></label><br/>
+  <label>Nombre de sets : 
+    <select id="numSets"><option>2</option><option>3</option></select>
+  </label><br/>
+  <label>Jeux par set :
+    <select id="gamesPerSet"><option>2</option><option>3</option><option>6</option></select>
+  </label><br/>
+  <label>Avantage : 
+    <select id="advantage"><option value="true">Oui</option><option value="false">Non</option></select>
+  </label><br/>
+  <label>Type de match : 
+    <select id="matchType"><option value="simple">Simple</option><option value="double">Double</option></select>
+  </label><br/>
+  <label>Durée pause (sec) : <input type="number" id="pauseDuration" value="90"/></label><br/>
   <button onclick="startMatch()">✅ Démarrer</button>
 </section>
 
 <!-- MATCH -->
 <section id="match" class="screen hidden">
   <h2 id="matchTitle"></h2>
-  <div id="matchTimer">⏱️ 00:00</div>
+  <div id="matchTimer"></div>
   <div id="fullScoreboard">
     <div>
-      <h3 id="p1Name">Joueur 1</h3>
-      <div>Surface : <span id="p1Surface">-</span></div>
+      <h3 id="p1Name"></h3>
+      <span id="p1Surface"></span>
       <div>Sets : <span id="p1Sets">0</span></div>
       <div>Jeux : <span id="p1Games">0</span></div>
-      <div>Points : <span id="scoreP1">0</span></div>
+      <div>Points : <span id="scoreP1">0</span> <span id="serveP1"></span></div>
     </div>
     <div>
-      <h3 id="p2Name">Joueur 2</h3>
-      <div>Surface : <span id="p2Surface">-</span></div>
+      <h3 id="p2Name"></h3>
+      <span id="p2Surface"></span>
       <div>Sets : <span id="p2Sets">0</span></div>
       <div>Jeux : <span id="p2Games">0</span></div>
-      <div>Points : <span id="scoreP2">0</span></div>
+      <div>Points : <span id="scoreP2">0</span> <span id="serveP2"></span></div>
     </div>
   </div>
   <div>
     <button onclick="point(1)">+1 Joueur 1</button>
     <button onclick="point(2)">+1 Joueur 2</button>
-  </div>
-  <div>
     <button onclick="togglePause()">⏸️ Pause</button>
     <button onclick="endMatch()">❌ Quitter</button>
   </div>
   <div id="pauseTimer" class="hidden"></div>
-  <audio id="bipSound" src="sound/bip.mp3" preload="auto"></audio>
+  <audio id="bipSound" src="sound/bip.mp3"></audio>
 </section>
 
 <!-- STATS -->
 <section id="stats" class="screen hidden">
   <h2>📊 Statistiques</h2>
-  <div id="statsContent">Chargement...</div>
+  <div id="statsContent">Chargement…</div>
 </section>
 
 <!-- HISTORIQUE -->
@@ -125,38 +105,44 @@
 <!-- PROFILS -->
 <section id="profile" class="screen hidden">
   <h2>👤 Profils</h2>
-  <label>Nom: <input type="text" id="newProfileName" /></label><br />
-  <label>Nationalité: <input type="text" id="newProfileCountry" placeholder="FR" /></label><br />
-  <label>Surface préférée:
+  <label>Nom : <input type="text" id="newProfileName"/></label><br/>
+  <label>Pays : <input type="text" id="newProfileCountry" placeholder="FR"/></label><br/>
+  <label>Surface préférée : 
     <select id="newProfileSurface">
       <option value="Dur">Dur</option>
-      <option value="Terre battue">Terre battue</option>
       <option value="Gazon">Gazon</option>
+      <option value="Terre battue">Terre battue</option>
     </select>
-  </label><br />
+  </label><br/>
   <button onclick="createProfile()">Créer / Mettre à jour</button>
   <ul id="profileList"></ul>
 </section>
 
-<!-- POPUP -->
+<!-- ONGLET VIDÉOS -->
+<section id="videos" class="screen hidden">
+  <h2>📹 Vidéos des utilisateurs</h2>
+  <input type="url" id="videoUrl" placeholder="Colle un lien YouTube / TikTok" />
+  <button onclick="addVideo()">📤 Ajouter</button>
+  <div id="videoList"></div>
+</section>
+
+<!-- POPUP VICTOIRE -->
 <div id="winnerPopup">🏆 Victoire !</div>
 
 <!-- SCRIPTS -->
 <script src="app.js"></script>
 <script>
-  // PWA Service Worker
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('service-worker.js').then(() => {
-      console.log('✅ Service worker prêt (PWA)');
+      console.log("✅ PWA prête");
     });
   }
 
-  // Splash screen animé (auto hide)
   window.addEventListener("load", () => {
     const splash = document.getElementById("animatedSplash");
     setTimeout(() => {
       splash.style.display = "none";
-    }, 4500);
+    }, 4000);
   });
 </script>
 </body>
