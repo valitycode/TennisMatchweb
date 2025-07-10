@@ -1,1 +1,89 @@
-<!-- Complete HTML content for final version -->
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Tennis Match</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <nav>
+        <button onclick="showScreen('menu')">🏠 Menu</button>
+        <button onclick="showScreen('match')">🎾 Match</button>
+        <button onclick="showScreen('stats')">📊 Stats</button>
+        <button onclick="showScreen('history')">🧾 Historique</button>
+        <button onclick="showScreen('profile')">👤 Profil</button>
+    </nav>
+
+    <section id="menu" class="screen">
+        <h1>🎾 Tennis Match</h1>
+        <label>Nom Joueur 1: <input type="text" id="p1Name"></label>
+        <label>Nationalité: <input type="text" id="p1Country" placeholder="FR"></label><br>
+        <label>Nom Joueur 2: <input type="text" id="p2Name"></label>
+        <label>Nationalité: <input type="text" id="p2Country" placeholder="US"></label><br>
+        <label>Simple ou Double:
+            <select id="matchType">
+                <option value="simple">Simple</option>
+                <option value="double">Double</option>
+            </select>
+        </label><br>
+        <label>Nombre de sets:
+            <select id="numSets">
+                <option value="2">2</option>
+                <option value="3">3</option>
+            </select>
+        </label><br>
+        <label>Jeux par set:
+            <select id="gamesPerSet">
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="6">6</option>
+            </select>
+        </label><br>
+        <label>Avantage ?
+            <select id="advantage">
+                <option value="true">Oui</option>
+                <option value="false">Non (No-Ad)</option>
+            </select>
+        </label><br>
+        <label>Durée de pause (sec):
+            <input type="number" id="pauseDuration" value="90" min="30" max="180">
+        </label><br>
+        <button onclick="startMatch()">Commencer le match</button>
+    </section>
+
+    <section id="match" class="screen hidden">
+        <h2 id="matchTitle"></h2>
+        <div id="scoreboard">
+            <div id="scoreP1">0</div>
+            <div id="scoreP2">0</div>
+        </div>
+        <div>
+            <button onclick="point(1)">+1 Joueur 1</button>
+            <button onclick="point(2)">+1 Joueur 2</button>
+        </div>
+        <div>
+            <button onclick="togglePause()">⏸️ Pause</button>
+            <button onclick="endMatch()">❌ Quitter le match</button>
+        </div>
+        <div id="pauseTimer" class="hidden"></div>
+        <audio id="bipSound" src="sound/bip.mp3" preload="auto"></audio>
+    </section>
+
+    <section id="stats" class="screen hidden">
+        <h2>📊 Statistiques</h2>
+        <div id="statsContent">Aucune donnée.</div>
+    </section>
+
+    <section id="history" class="screen hidden">
+        <h2>🧾 Historique des matchs</h2>
+        <ul id="historyList"></ul>
+    </section>
+
+    <section id="profile" class="screen hidden">
+        <h2>👤 Profil joueur</h2>
+        <p id="profileInfo">Aucun profil chargé.</p>
+    </section>
+
+    <script src="app.js"></script>
+</body>
+</html>
