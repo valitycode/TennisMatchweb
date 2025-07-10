@@ -10,6 +10,12 @@
 </head>
 <body>
 
+<!-- Splash Screen -->
+<div id="splashScreen">
+  <div class="splash-logo">🎾</div>
+  <div class="splash-text">Tennis Match</div>
+</div>
+
 <!-- Barre de navigation -->
 <nav>
   <button onclick="showScreen('home')">🏠 Accueil</button>
@@ -156,6 +162,14 @@
       console.log('✅ Service worker prêt (PWA)');
     });
   }
+
+  // Splash screen animé (disparition après 3 sec)
+  window.addEventListener("load", () => {
+    const splash = document.getElementById("splashScreen");
+    setTimeout(() => {
+      splash.style.display = "none";
+    }, 3000);
+  });
 </script>
 </body>
 </html>
