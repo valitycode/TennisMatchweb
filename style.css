@@ -1,11 +1,21 @@
+/* Fond animé doux */
 body {
-    background-color: #121212;
+    background: linear-gradient(120deg, #0f0f0f, #1a1a1a);
+    background-size: 400% 400%;
+    animation: backgroundShift 15s ease infinite;
     color: #f0f0f0;
     font-family: 'Segoe UI', sans-serif;
     margin: 0;
     padding: 0;
 }
 
+@keyframes backgroundShift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+/* Navigation */
 nav {
     background-color: #1e1e1e;
     padding: 12px;
@@ -31,12 +41,26 @@ nav button:hover {
     color: #00d1ff;
 }
 
+/* Écrans */
 .screen {
     padding: 25px;
     max-width: 900px;
     margin: auto;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.5s ease;
 }
 
+.screen:not(.hidden) {
+    opacity: 1;
+    pointer-events: all;
+}
+
+.hidden {
+    display: none;
+}
+
+/* Inputs */
 input, select, button {
     margin: 6px 0;
     padding: 10px;
@@ -53,10 +77,6 @@ button {
 
 button:hover {
     background-color: #333;
-}
-
-.hidden {
-    display: none;
 }
 
 /* Scoreboard */
@@ -124,7 +144,31 @@ button:hover {
     border-radius: 4px;
 }
 
-/* Mobile responsive */
+/* Popup victoire */
+#winnerPopup {
+    position: fixed;
+    top: 30%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #222;
+    border: 2px solid #00eaff;
+    padding: 20px 30px;
+    color: white;
+    font-size: 22px;
+    border-radius: 10px;
+    display: none;
+    z-index: 9999;
+    box-shadow: 0 0 20px #00eaffaa;
+    text-align: center;
+    animation: popIn 0.4s ease;
+}
+
+@keyframes popIn {
+    0% { transform: translateX(-50%) scale(0.7); opacity: 0; }
+    100% { transform: translateX(-50%) scale(1); opacity: 1; }
+}
+
+/* Responsive */
 @media screen and (max-width: 600px) {
     nav {
         flex-direction: column;
