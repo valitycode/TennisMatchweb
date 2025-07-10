@@ -1,160 +1,246 @@
-let players = {};
-let score = [0, 0];
-let sets = [0, 0];
-let currentGame = [0, 0];
-let pauseActive = false;
-let pauseInterval;
-let pauseTime = 90;
-let matchConfig = {};
+let profiles = JSON.parse(localStorage.getItem("profiles") || "{}");
 let history = JSON.parse(localStorage.getItem("matchHistory") || "[]");
+
+let currentMatch = {
+    p1: null,
+    p2: null,
+    score: [0, 0],
+    games: [0, 0],
+    sets: [0, 0],
+    config: {},
+    timer: 0,
+    interval: null
+};
 
 function showScreen(id) {
     document.querySelectorAll(".screen").forEach(s => s.classList.add("hidden"));
     document.getElementById(id).classList.remove("hidden");
-
+    if (id === "profile") updateProfileList();
     if (id === "history") renderHistory();
     if (id === "stats") renderStats();
-    if (id === "profile") renderProfile();
+}
+
+function createProfile() {
+    const name = document.getElementById("newProfileName").value.trim();
+    if (!name) return alert("Nom obligatoire");
+    profiles[name] = {
+        name,
+        country: document.getElementById("newProfileCountry").value.toUpperCase(),
+        surface: document.getElementById("newProfileSurface").value,
+        wins: 0,
+        losses: 0,
+        timePlayed: 0
+    };
+    localStorage.setItem("profiles", JSON.stringify(profiles));
+    updateProfileList();
+    updateProfileSelectors();
+}
+
+function updateProfileList() {
+    const ul = document.getElementById("profileList");
+    ul.innerHTML = "";
+    for (let key in profiles) {
+        const p = profiles[key];
+        const li = document.createElement("li");
+        li.innerText = `${p.name} (${p.country}) - Surface: ${p.surface}, ${p.wins}V / ${p.losses}D, ${Math.floor(p.timePlayed / 60)}min`;
+        ul.appendChild(li);
+    }
+}
+
+function updateProfileSelectors() {
+    const sel1 = document.getElementById("profile1Select");
+    const sel2 = document.getElementById("profile2Select");
+    sel1.innerHTML = sel2.innerHTML = "";
+    for (let key in profiles) {
+        const opt = document.createElement("option");
+        opt.value = key;
+        opt.innerText = key;
+        sel1.appendChild(opt.cloneNode(true));
+        sel2.appendChild(opt.cloneNode(true));
+    }
 }
 
 function startMatch() {
-    players = {
-        1: { name: document.getElementById("p1Name").value, country: flag(document.getElementById("p1Country").value), wins: 0 },
-        2: { name: document.getElementById("p2Name").value, country: flag(document.getElementById("p2Country").value), wins: 0 }
-    };
-    matchConfig = {
-        sets: parseInt(document.getElementById("numSets").value),
+    const p1Key = document.getElementById("profile1Select").value;
+    const p2Key = document.getElementById("profile2Select").value;
+    if (!profiles[p1Key] || !profiles[p2Key]) return alert("Sélectionne deux profils");
+
+    currentMatch.p1 = profiles[p1Key];
+    currentMatch.p2 = profiles[p2Key];
+    currentMatch.score = [0, 0];
+    currentMatch.games = [0, 0];
+    currentMatch.sets = [0, 0];
+    currentMatch.timer = 0;
+    clearInterval(currentMatch.interval);
+
+    currentMatch.config = {
+        setsToWin: parseInt(document.getElementById("numSets").value),
         gamesPerSet: parseInt(document.getElementById("gamesPerSet").value),
         advantage: document.getElementById("advantage").value === "true",
         matchType: document.getElementById("matchType").value,
+        pauseDuration: parseInt(document.getElementById("pauseDuration").value)
     };
-    pauseTime = parseInt(document.getElementById("pauseDuration").value);
 
-    score = [0, 0];
-    sets = [0, 0];
-    currentGame = [0, 0];
+    document.getElementById("matchTitle").innerText =
+        `${currentMatch.p1.name} (${flag(currentMatch.p1.country)}) vs ${currentMatch.p2.name} (${flag(currentMatch.p2.country)})`;
 
-    document.getElementById("scoreP1").innerText = "0";
-    document.getElementById("scoreP2").innerText = "0";
-    document.getElementById("matchTitle").innerText = `${players[1].name} (${players[1].country}) vs ${players[2].name} (${players[2].country})`;
+    document.getElementById("p1Name").innerText = currentMatch.p1.name;
+    document.getElementById("p2Name").innerText = currentMatch.p2.name;
 
+    updateScoreDisplay();
     showScreen("match");
+    startChrono();
 }
 
 function flag(code) {
-    return code.toUpperCase().replace(/./g, char => String.fromCodePoint(127397 + char.charCodeAt()));
+    return code.toUpperCase().replace(/./g, c => String.fromCodePoint(127397 + c.charCodeAt()));
+}
+
+function updateScoreDisplay() {
+    const labels = ["0", "15", "30", "40", "Adv"];
+    const [s1, s2] = currentMatch.score;
+    const [g1, g2] = currentMatch.games;
+    const [t1, t2] = currentMatch.sets;
+
+    document.getElementById("scoreP1").innerText = labels[s1] || "Jeu";
+    document.getElementById("scoreP2").innerText = labels[s2] || "Jeu";
+    document.getElementById("p1Games").innerText = g1;
+    document.getElementById("p2Games").innerText = g2;
+    document.getElementById("p1Sets").innerText = t1;
+    document.getElementById("p2Sets").innerText = t2;
 }
 
 function point(playerIndex) {
-    const opponent = playerIndex === 1 ? 2 : 1;
-    const scores = ["0", "15", "30", "40"];
-    let sc1 = score[0];
-    let sc2 = score[1];
+    const opponent = playerIndex === 1 ? 1 : 0;
+    const p = playerIndex - 1;
+    const o = opponent;
 
-    if (!matchConfig.advantage && matchConfig.matchType === "double") matchConfig.advantage = false;
+    const [s1, s2] = currentMatch.score;
 
-    if (sc1 === 3 && sc2 < 3 && playerIndex === 1) winGame(1);
-    else if (sc2 === 3 && sc1 < 3 && playerIndex === 2) winGame(2);
-    else if (sc1 === 3 && sc2 === 3) {
-        if (!matchConfig.advantage) {
-            winGame(playerIndex);
-        } else {
-            if (score[playerIndex - 1] === 4) winGame(playerIndex);
-            else if (score[opponent - 1] === 4) {
-                score[opponent - 1] = 3;
-                score[playerIndex - 1] = 3;
-            } else {
-                score[playerIndex - 1]++;
-            }
-        }
-    } else {
-        score[playerIndex - 1]++;
+    // Win outright
+    if (currentMatch.score[p] === 3 && currentMatch.score[o] < 3) {
+        winGame(playerIndex);
+        return;
     }
 
-    updateScore();
+    // Deuce / Advantage logic
+    if (s1 >= 3 && s2 >= 3) {
+        if (!currentMatch.config.advantage || currentMatch.config.matchType === "double") {
+            winGame(playerIndex);
+            return;
+        }
+
+        if (currentMatch.score[p] === 4) {
+            winGame(playerIndex);
+        } else if (currentMatch.score[o] === 4) {
+            currentMatch.score[o] = 3;
+        } else {
+            currentMatch.score[p]++;
+        }
+    } else {
+        currentMatch.score[p]++;
+    }
+
+    updateScoreDisplay();
 }
 
-function winGame(winner) {
-    currentGame[winner - 1]++;
-    score = [0, 0];
+function winGame(playerIndex) {
+    const p = playerIndex - 1;
+    currentMatch.games[p]++;
+    currentMatch.score = [0, 0];
 
-    if (currentGame[winner - 1] >= matchConfig.gamesPerSet) {
-        sets[winner - 1]++;
-        currentGame = [0, 0];
+    if (currentMatch.games[p] >= currentMatch.config.gamesPerSet) {
+        currentMatch.sets[p]++;
+        currentMatch.games = [0, 0];
 
-        if (sets[winner - 1] >= matchConfig.sets) {
-            endMatch(winner);
+        if (currentMatch.sets[p] >= currentMatch.config.setsToWin) {
+            endMatch(playerIndex);
             return;
         }
     }
 
-    updateScore();
-}
-
-function updateScore() {
-    const labels = ["0", "15", "30", "40", "Advantage"];
-    document.getElementById("scoreP1").innerText = labels[score[0]] || "Jeu";
-    document.getElementById("scoreP2").innerText = labels[score[1]] || "Jeu";
+    updateScoreDisplay();
 }
 
 function togglePause() {
     const timerDiv = document.getElementById("pauseTimer");
-    const scoreboard = document.getElementById("scoreboard");
+    const scoreboard = document.getElementById("fullScoreboard");
     const sound = document.getElementById("bipSound");
 
-    if (!pauseActive) {
-        let time = pauseTime;
-        timerDiv.innerText = `⏱️ Pause : ${time}s`;
-        timerDiv.classList.remove("hidden");
-        scoreboard.style.position = "absolute";
-        scoreboard.style.top = "10px";
-        scoreboard.style.right = "10px";
-        pauseInterval = setInterval(() => {
-            time--;
-            timerDiv.innerText = `⏱️ Pause : ${time}s`;
-            if (time <= 0) {
-                clearInterval(pauseInterval);
-                timerDiv.classList.add("hidden");
-                scoreboard.style.position = "static";
-                sound.play();
-                pauseActive = false;
-            }
-        }, 1000);
-        pauseActive = true;
-    }
+    let time = currentMatch.config.pauseDuration;
+    timerDiv.innerText = `⏸ Pause : ${time}s`;
+    timerDiv.classList.remove("hidden");
+    scoreboard.style.position = "absolute";
+    scoreboard.style.top = "10px";
+    scoreboard.style.right = "10px";
+
+    const pauseInterval = setInterval(() => {
+        time--;
+        timerDiv.innerText = `⏸ Pause : ${time}s`;
+        if (time <= 0) {
+            clearInterval(pauseInterval);
+            timerDiv.classList.add("hidden");
+            scoreboard.style.position = "static";
+            sound.play();
+        }
+    }, 1000);
 }
 
-function endMatch(winner = null) {
-    if (winner) {
-        alert(`Victoire de ${players[winner].name} !`);
-        players[winner].wins++;
+function startChrono() {
+    const timerDiv = document.getElementById("matchTimer");
+    currentMatch.interval = setInterval(() => {
+        currentMatch.timer++;
+        const min = String(Math.floor(currentMatch.timer / 60)).padStart(2, "0");
+        const sec = String(currentMatch.timer % 60).padStart(2, "0");
+        timerDiv.innerText = `⏱️ ${min}:${sec}`;
+    }, 1000);
+}
+
+function endMatch(winnerIndex = null) {
+    clearInterval(currentMatch.interval);
+    if (winnerIndex !== null) {
+        const winner = winnerIndex === 1 ? currentMatch.p1 : currentMatch.p2;
+        const loser = winnerIndex === 1 ? currentMatch.p2 : currentMatch.p1;
+
+        profiles[winner.name].wins++;
+        profiles[loser.name].losses++;
+        profiles[winner.name].timePlayed += currentMatch.timer;
+        profiles[loser.name].timePlayed += currentMatch.timer;
+
         history.push({
-            winner: players[winner].name,
-            loser: players[winner === 1 ? 2 : 1].name,
-            date: new Date().toLocaleString()
+            date: new Date().toLocaleString(),
+            winner: winner.name,
+            loser: loser.name,
+            duration: currentMatch.timer
         });
+
+        localStorage.setItem("profiles", JSON.stringify(profiles));
         localStorage.setItem("matchHistory", JSON.stringify(history));
+
+        alert(`🏆 Victoire de ${winner.name} !`);
     }
+
     showScreen("menu");
 }
 
 function renderHistory() {
     const ul = document.getElementById("historyList");
     ul.innerHTML = "";
-    history.slice().reverse().forEach(h => {
+    history.slice().reverse().forEach(item => {
         const li = document.createElement("li");
-        li.innerText = `${h.date} - ${h.winner} a battu ${h.loser}`;
+        li.innerText = `${item.date} – ${item.winner} a battu ${item.loser} (${Math.floor(item.duration / 60)}min)`;
         ul.appendChild(li);
     });
 }
 
 function renderStats() {
-    let total = players[1].wins + players[2].wins;
-    document.getElementById("statsContent").innerText = total === 0
-        ? "Aucune donnée encore."
-        : `${players[1].name}: ${players[1].wins} victoires\n${players[2].name}: ${players[2].wins} victoires`;
-}
-
-function renderProfile() {
-    document.getElementById("profileInfo").innerText = `${players[1].name} (${players[1].country}) - Surface préférée: Dur`;
+    const div = document.getElementById("statsContent");
+    div.innerHTML = "";
+    for (let key in profiles) {
+        const p = profiles[key];
+        const ratio = p.wins + p.losses > 0 ? Math.round((p.wins / (p.wins + p.losses)) * 100) : 0;
+        const line = document.createElement("p");
+        line.innerText = `${p.name} – ${p.wins}V / ${p.losses}D – ${ratio}% – ${Math.floor(p.timePlayed / 60)}min`;
+        div.appendChild(line);
+    }
 }
