@@ -13,7 +13,7 @@ nav {
     justify-content: space-around;
     position: sticky;
     top: 0;
-    z-index: 999;
+    z-index: 1000;
     border-bottom: 1px solid #333;
 }
 
@@ -31,7 +31,7 @@ nav button {
 }
 
 input, select, button {
-    margin: 5px;
+    margin: 6px;
     padding: 8px;
     background-color: #222;
     color: white;
@@ -39,12 +39,36 @@ input, select, button {
     border-radius: 4px;
 }
 
-#scoreboard {
+button:hover {
+    background-color: #444;
+}
+
+.hidden {
+    display: none;
+}
+
+#matchTimer {
+    text-align: center;
+    font-size: 1.2em;
+    margin-bottom: 10px;
+    color: #7df;
+}
+
+#fullScoreboard {
     display: flex;
-    justify-content: center;
-    gap: 50px;
-    font-size: 3em;
+    justify-content: space-around;
     margin: 30px 0;
+    text-align: center;
+    font-size: 1.2em;
+    gap: 40px;
+}
+
+#fullScoreboard div {
+    border: 1px solid #333;
+    padding: 15px;
+    background-color: #1b1b1b;
+    border-radius: 8px;
+    width: 45%;
 }
 
 #pauseTimer {
@@ -54,18 +78,15 @@ input, select, button {
     margin-top: 20px;
 }
 
-.hidden {
-    display: none;
-}
-
-#historyList {
+#historyList, #profileList {
     list-style: none;
     padding: 0;
 }
 
-#historyList li {
+#historyList li, #profileList li {
     background-color: #1e1e1e;
     margin: 5px 0;
     padding: 10px;
     border-left: 4px solid #555;
+    font-size: 14px;
 }
