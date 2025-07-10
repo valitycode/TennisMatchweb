@@ -1,4 +1,4 @@
-/* Fond animé doux */
+/* FOND GÉNÉRAL ANIMÉ */
 body {
     background: linear-gradient(120deg, #0f0f0f, #1a1a1a);
     background-size: 400% 400%;
@@ -15,12 +15,13 @@ body {
     100% { background-position: 0% 50%; }
 }
 
-/* Navigation */
+/* NAVIGATION */
 nav {
     background-color: #1e1e1e;
     padding: 12px;
     display: flex;
     justify-content: space-around;
+    flex-wrap: wrap;
     position: sticky;
     top: 0;
     z-index: 1000;
@@ -36,12 +37,11 @@ nav button {
     cursor: pointer;
     transition: color 0.2s;
 }
-
 nav button:hover {
     color: #00d1ff;
 }
 
-/* Écrans */
+/* SECTIONS */
 .screen {
     padding: 25px;
     max-width: 900px;
@@ -50,17 +50,15 @@ nav button:hover {
     pointer-events: none;
     transition: opacity 0.5s ease;
 }
-
 .screen:not(.hidden) {
     opacity: 1;
     pointer-events: all;
 }
-
 .hidden {
     display: none;
 }
 
-/* Inputs */
+/* FORMULAIRES ET BOUTONS */
 input, select, button {
     margin: 6px 0;
     padding: 10px;
@@ -70,16 +68,14 @@ input, select, button {
     border-radius: 6px;
     font-size: 14px;
 }
-
 button {
     cursor: pointer;
 }
-
 button:hover {
     background-color: #333;
 }
 
-/* Scoreboard */
+/* SCOREBOARD */
 #fullScoreboard {
     display: flex;
     justify-content: space-around;
@@ -88,7 +84,6 @@ button:hover {
     gap: 30px;
     flex-wrap: wrap;
 }
-
 #fullScoreboard div {
     flex: 1;
     min-width: 160px;
@@ -98,12 +93,10 @@ button:hover {
     border-radius: 10px;
     box-shadow: 0 0 5px #000;
 }
-
 #fullScoreboard h3 {
     margin-bottom: 10px;
     font-size: 18px;
 }
-
 #fullScoreboard div span {
     font-weight: bold;
     font-size: 20px;
@@ -112,15 +105,13 @@ button:hover {
     margin-top: 4px;
 }
 
-/* Chronomètre */
+/* CHRONO / PAUSE */
 #matchTimer {
     text-align: center;
     font-size: 18px;
     color: #7df;
     margin-top: 10px;
 }
-
-/* Pause Timer */
 #pauseTimer {
     font-size: 24px;
     color: #f55;
@@ -128,13 +119,12 @@ button:hover {
     margin-top: 30px;
 }
 
-/* Listes */
+/* HISTORIQUE & PROFILS */
 #historyList, #profileList {
     list-style: none;
     padding: 0;
     margin-top: 20px;
 }
-
 #historyList li, #profileList li {
     background-color: #1e1e1e;
     margin-bottom: 8px;
@@ -144,7 +134,7 @@ button:hover {
     border-radius: 4px;
 }
 
-/* Popup victoire */
+/* POPUP VICTOIRE */
 #winnerPopup {
     position: fixed;
     top: 30%;
@@ -162,13 +152,70 @@ button:hover {
     text-align: center;
     animation: popIn 0.4s ease;
 }
-
 @keyframes popIn {
     0% { transform: translateX(-50%) scale(0.7); opacity: 0; }
     100% { transform: translateX(-50%) scale(1); opacity: 1; }
 }
 
-/* Responsive */
+/* SPLASH ANIMÉ */
+#animatedSplash {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100vw; height: 100vh;
+    background: #0f0f0f;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 99999;
+    animation: fadeOut 1s ease 4s forwards;
+}
+.ball {
+    width: 50px;
+    height: 50px;
+    background: #FFEB3B;
+    border-radius: 50%;
+    border: 3px solid white;
+    animation: bounce 1.2s ease infinite;
+    margin-bottom: 30px;
+}
+.splash-title {
+    font-size: 32px;
+    color: #00eaff;
+    font-weight: bold;
+    letter-spacing: 4px;
+    display: flex;
+    gap: 4px;
+}
+.splash-title span {
+    opacity: 0;
+    animation: appear 0.5s ease forwards;
+}
+.splash-title span:nth-child(1) { animation-delay: 0.4s; }
+.splash-title span:nth-child(2) { animation-delay: 0.6s; }
+.splash-title span:nth-child(3) { animation-delay: 0.8s; }
+.splash-title span:nth-child(4) { animation-delay: 1s; }
+.splash-title span:nth-child(5) { animation-delay: 1.2s; }
+.splash-title span:nth-child(6) { animation-delay: 1.4s; }
+.splash-title span:nth-child(7) { animation-delay: 1.6s; }
+.splash-title span:nth-child(8) { animation-delay: 1.8s; }
+.splash-title span:nth-child(9) { animation-delay: 2s; }
+.splash-title span:nth-child(10) { animation-delay: 2.2s; }
+.splash-title span:nth-child(11) { animation-delay: 2.4s; }
+.splash-title span:nth-child(12) { animation-delay: 2.6s; }
+
+@keyframes bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-35px); }
+}
+@keyframes appear {
+    to { opacity: 1; transform: scale(1.1); }
+}
+@keyframes fadeOut {
+    to { opacity: 0; visibility: hidden; }
+}
+
+/* RESPONSIVE */
 @media screen and (max-width: 600px) {
     nav {
         flex-direction: column;
