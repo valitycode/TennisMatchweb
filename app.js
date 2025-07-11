@@ -1,132 +1,186 @@
-// Tennis Match Social - App JS
-import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
-import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
-import { getFirestore, doc, setDoc, getDoc, collection, addDoc, getDocs, updateDoc, query, orderBy, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js";
-
+// ✅ Initialisation Firebase (sans import)
 const firebaseConfig = {
   apiKey: "AIzaSyAXdiQUOoesoL6ZpysU_C1IMTKmwW-h8ZU",
   authDomain: "tennismatchsocial.firebaseapp.com",
   projectId: "tennismatchsocial",
-  storageBucket: "tennismatchsocial.firebasestorage.app",
+  storageBucket: "tennismatchsocial.appspot.com",
   messagingSenderId: "395364748818",
   appId: "1:395364748818:web:8826342c2a48b9181252cb",
   measurementId: "G-10CRCCVLRC"
 };
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-
-const screens = ["authScreen", "homeScreen", "videoScreen", "profileScreen", "matchScreen"];
-function showScreen(id) {
-  screens.forEach(s => document.getElementById(s).classList.add("hidden"));
-  document.getElementById(id).classList.remove("hidden");
+try {
+  firebase.initializeApp(firebaseConfig);
+} catch (e) {
+  document.getElementById('errorMsg').innerText = "Erreur Firebase : " + e.message;
+  document.getElementById('errorMsg').classList.remove("hidden");
 }
 
-onAuthStateChanged(auth, async user => {
+const db = firebase.firestore();
+const auth = firebase.auth();
+let userId = null;
+
+// 🔐 Authentification
+auth.onAuthStateChanged(user => {
   if (user) {
-    document.getElementById("userEmail").innerText = user.email;
-    await loadProfile(user.uid);
-    await loadVideos();
+    userId = user.uid;
     showScreen("homeScreen");
+    document.getElementById("userEmail").innerText = user.email;
+    loadProfile();
+    loadVideos();
   } else {
     showScreen("authScreen");
   }
 });
 
-async function login() {
+function login() {
   const email = document.getElementById("authEmail").value;
-  const pass = document.getElementById("authPassword").value;
-  await signInWithEmailAndPassword(auth, email, pass);
+  const password = document.getElementById("authPassword").value;
+  auth.signInWithEmailAndPassword(email, password).catch(err => {
+    alert("Erreur connexion : " + err.message);
+  });
 }
 
-async function register() {
+function register() {
   const email = document.getElementById("authEmail").value;
-  const pass = document.getElementById("authPassword").value;
-  const userCred = await createUserWithEmailAndPassword(auth, email, pass);
-  await setDoc(doc(db, "users", userCred.user.uid), {
-    email,
-    surface: "Dur",
-    wins: 0,
-    losses: 0,
-    timePlayed: 0,
-    created: serverTimestamp()
+  const password = document.getElementById("authPassword").value;
+  auth.createUserWithEmailAndPassword(email, password).catch(err => {
+    alert("Erreur création : " + err.message);
   });
 }
 
 function logout() {
-  signOut(auth);
+  auth.signOut();
 }
 
-async function loadProfile(uid) {
-  const snap = await getDoc(doc(db, "users", uid));
-  if (snap.exists()) {
-    const user = snap.data();
-    document.getElementById("userName").innerText = "Nom : " + user.email;
-    document.getElementById("userSurface").innerText = "Surface : " + user.surface;
-    document.getElementById("userStats").innerText = `Victoires: ${user.wins}, DÃ©faites: ${user.losses}, Temps: ${user.timePlayed} sec`;
-  }
-}
-
-async function addVideo(e) {
+// 📺 Vidéos (TikTok/YouTube)
+function addVideo(e) {
   e.preventDefault();
-  const link = document.getElementById("videoLink").value.trim();
-  if (!link) return;
-  await addDoc(collection(db, "videos"), {
-    link,
-    owner: auth.currentUser.uid,
-    created: serverTimestamp()
+  const url = document.getElementById("videoLink").value;
+  if (!url) return;
+  db.collection("videos").add({
+    url,
+    uid: userId,
+    date: new Date()
   });
   document.getElementById("videoLink").value = "";
-  await loadVideos();
+  loadVideos();
 }
 
-async function loadVideos() {
-  const q = query(collection(db, "videos"), orderBy("created", "desc"));
-  const snap = await getDocs(q);
-  const feed = document.getElementById("videoFeed");
-  feed.innerHTML = "";
-  snap.forEach(doc => {
-    const data = doc.data();
-    let el;
-    if (data.link.includes("youtube") || data.link.includes("youtu.be")) {
-      const embed = data.link.replace("watch?v=", "embed/");
-      el = `<iframe src="${embed}" frameborder="0" allowfullscreen></iframe>`;
-    } else {
-      el = `<a href="${data.link}" target="_blank">${data.link}</a>`;
-    }
-    feed.innerHTML += `<div>${el}</div>`;
+function loadVideos() {
+  db.collection("videos").orderBy("date", "desc").onSnapshot(snapshot => {
+    const feed = document.getElementById("videoFeed");
+    feed.innerHTML = "";
+    snapshot.forEach(doc => {
+      const data = doc.data();
+      const container = document.createElement("div");
+      container.className = "videoCard";
+      container.innerHTML = `
+        <iframe src="${data.url.replace('watch?v=', 'embed/')}" frameborder="0" allowfullscreen></iframe>
+      `;
+      feed.appendChild(container);
+    });
   });
 }
 
-// Match logique (simplifiÃ©e)
-let currentMatch = {
-  p1: { name: "Joueur 1", sets: 0, games: 0, points: 0 },
-  p2: { name: "Joueur 2", sets: 0, games: 0, points: 0 }
+// 👤 Profil
+function loadProfile() {
+  db.collection("users").doc(userId).get().then(doc => {
+    if (doc.exists) {
+      const data = doc.data();
+      document.getElementById("userName").innerText = "Nom : " + (data.name || "—");
+      document.getElementById("userSurface").innerText = "Surface préférée : " + (data.surface || "—");
+      document.getElementById("userStats").innerText = data.stats || "Aucune stat encore.";
+      document.getElementById("userPhoto").src = data.photo || "https://via.placeholder.com/100";
+    }
+  });
+}
+
+// 🎾 Match (scoring)
+let matchState = {
+  p1: 0,
+  p2: 0,
+  games1: 0,
+  games2: 0,
+  sets1: 0,
+  sets2: 0,
+  paused: false,
+  timerStart: null
 };
 
 function point(player) {
-  const p = player === 1 ? currentMatch.p1 : currentMatch.p2;
-  p.points++;
+  if (matchState.paused) return;
+  if (player === 1) matchState.p1++;
+  else matchState.p2++;
+
+  // Simple scoring
+  if (matchState.p1 >= 4 && matchState.p1 - matchState.p2 >= 2) {
+    matchState.games1++;
+    matchState.p1 = 0;
+    matchState.p2 = 0;
+  } else if (matchState.p2 >= 4 && matchState.p2 - matchState.p1 >= 2) {
+    matchState.games2++;
+    matchState.p1 = 0;
+    matchState.p2 = 0;
+  }
+
+  if (matchState.games1 >= 6 && matchState.games1 - matchState.games2 >= 2) {
+    matchState.sets1++;
+    matchState.games1 = 0;
+    matchState.games2 = 0;
+  } else if (matchState.games2 >= 6 && matchState.games2 - matchState.games1 >= 2) {
+    matchState.sets2++;
+    matchState.games1 = 0;
+    matchState.games2 = 0;
+  }
+
   updateMatchUI();
 }
 
 function updateMatchUI() {
-  document.getElementById("p1Name").innerText = currentMatch.p1.name;
-  document.getElementById("p2Name").innerText = currentMatch.p2.name;
-  document.getElementById("p1Sets").innerText = currentMatch.p1.sets;
-  document.getElementById("p2Sets").innerText = currentMatch.p2.sets;
-  document.getElementById("p1Games").innerText = currentMatch.p1.games;
-  document.getElementById("p2Games").innerText = currentMatch.p2.games;
-  document.getElementById("scoreP1").innerText = currentMatch.p1.points;
-  document.getElementById("scoreP2").innerText = currentMatch.p2.points;
+  document.getElementById("p1Name").innerText = "Joueur 1";
+  document.getElementById("p2Name").innerText = "Joueur 2";
+  document.getElementById("scoreP1").innerText = convertScore(matchState.p1);
+  document.getElementById("scoreP2").innerText = convertScore(matchState.p2);
+  document.getElementById("p1Games").innerText = matchState.games1;
+  document.getElementById("p2Games").innerText = matchState.games2;
+  document.getElementById("p1Sets").innerText = matchState.sets1;
+  document.getElementById("p2Sets").innerText = matchState.sets2;
 }
 
+function convertScore(score) {
+  return ["0", "15", "30", "40", "AV"][score] || "AV";
+}
+
+// 🕒 Pause
 function togglePause() {
-  const timer = document.getElementById("matchTimer");
-  timer.innerText = "â¸ Pause 90s...";
-  setTimeout(() => {
-    timer.innerText = "â±ï¸ Reprise";
-    document.getElementById("bipSound").play();
-  }, 90000);
+  const paused = !matchState.paused;
+  matchState.paused = paused;
+  const bip = document.getElementById("bipSound");
+
+  if (paused) {
+    document.getElementById("matchTimer").innerText = "Pause : 90 sec";
+    let countdown = 90;
+    const interval = setInterval(() => {
+      countdown--;
+      document.getElementById("matchTimer").innerText = "Pause : " + countdown + " sec";
+      if (countdown === 0) {
+        clearInterval(interval);
+        bip.play();
+        matchState.paused = false;
+        document.getElementById("matchTimer").innerText = "Reprise";
+        setTimeout(() => {
+          document.getElementById("matchTimer").innerText = "";
+        }, 2000);
+      }
+    }, 1000);
+  } else {
+    document.getElementById("matchTimer").innerText = "";
+  }
+}
+
+// 🌐 Navigation
+function showScreen(id) {
+  document.querySelectorAll(".screen").forEach(s => s.classList.add("hidden"));
+  document.getElementById(id).classList.remove("hidden");
 }
