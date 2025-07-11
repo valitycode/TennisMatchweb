@@ -2,148 +2,72 @@
 <html lang="fr">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Tennis Match</title>
-  <meta name="theme-color" content="#0f0f0f" />
-  <link rel="stylesheet" href="style.css" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Tennis Match Social</title>
   <link rel="manifest" href="manifest.json" />
-  <link rel="icon" href="icon-192.png" type="image/png" />
+  <link rel="stylesheet" href="style.css" />
+  <script defer src="app.js" type="module"></script>
 </head>
 <body>
 
-<!-- Splash screen -->
-<div id="animatedSplash">
-  <div class="ball"></div>
-  <div class="splash-title">
-    <span>T</span><span>E</span><span>N</span><span>N</span><span>I</span><span>S</span>
-    <span>M</span><span>A</span><span>T</span><span>C</span><span>H</span>
+  <!-- 🔐 Auth -->
+  <div id="authScreen" class="screen">
+    <h1>Tennis Match 🎾</h1>
+    <input type="email" id="authEmail" placeholder="Email" />
+    <input type="password" id="authPassword" placeholder="Mot de passe" />
+    <button onclick="login()">Connexion</button>
+    <button onclick="register()">Créer un compte</button>
   </div>
-</div>
 
-<!-- Barre de navigation -->
-<nav>
-  <button onclick="showScreen('home')">🏠 Accueil</button>
-  <button onclick="showScreen('newmatch')">🎾 Nouveau Match</button>
-  <button onclick="showScreen('match')">🎮 Match</button>
-  <button onclick="showScreen('stats')">📊 Stats</button>
-  <button onclick="showScreen('history')">🧾 Historique</button>
-  <button onclick="showScreen('profile')">👤 Profils</button>
-  <button onclick="showScreen('videos')">📹 Vidéos</button>
-</nav>
-
-<!-- ACCUEIL -->
-<section id="home" class="screen">
-  <h1>🏠 Accueil</h1>
-  <div id="liveMatchInfo"></div>
-  <div id="lastMatchResult"></div>
-  <div id="quickStats"></div>
-</section>
-
-<!-- NOUVEAU MATCH -->
-<section id="newmatch" class="screen hidden">
-  <h2>Nouveau match</h2>
-  <label>Joueur 1 : <select id="profile1Select"></select></label><br/>
-  <label>Joueur 2 : <select id="profile2Select"></select></label><br/>
-  <label>Nombre de sets : 
-    <select id="numSets"><option>2</option><option>3</option></select>
-  </label><br/>
-  <label>Jeux par set :
-    <select id="gamesPerSet"><option>2</option><option>3</option><option>6</option></select>
-  </label><br/>
-  <label>Avantage : 
-    <select id="advantage"><option value="true">Oui</option><option value="false">Non</option></select>
-  </label><br/>
-  <label>Type de match : 
-    <select id="matchType"><option value="simple">Simple</option><option value="double">Double</option></select>
-  </label><br/>
-  <label>Durée pause (sec) : <input type="number" id="pauseDuration" value="90"/></label><br/>
-  <button onclick="startMatch()">✅ Démarrer</button>
-</section>
-
-<!-- MATCH -->
-<section id="match" class="screen hidden">
-  <h2 id="matchTitle"></h2>
-  <div id="matchTimer"></div>
-  <div id="fullScoreboard">
-    <div>
-      <h3 id="p1Name"></h3>
-      <span id="p1Surface"></span>
-      <div>Sets : <span id="p1Sets">0</span></div>
-      <div>Jeux : <span id="p1Games">0</span></div>
-      <div>Points : <span id="scoreP1">0</span> <span id="serveP1"></span></div>
-    </div>
-    <div>
-      <h3 id="p2Name"></h3>
-      <span id="p2Surface"></span>
-      <div>Sets : <span id="p2Sets">0</span></div>
-      <div>Jeux : <span id="p2Games">0</span></div>
-      <div>Points : <span id="scoreP2">0</span> <span id="serveP2"></span></div>
-    </div>
+  <!-- 🏠 Accueil -->
+  <div id="homeScreen" class="screen hidden">
+    <header>
+      <h2>Bienvenue, <span id="userEmail"></span></h2>
+      <button onclick="logout()">Déconnexion</button>
+    </header>
+    <nav>
+      <button onclick="showScreen('videoScreen')">📹 Vidéos</button>
+      <button onclick="showScreen('profileScreen')">👤 Profil</button>
+      <button onclick="showScreen('matchScreen')">🎾 Match</button>
+    </nav>
   </div>
-  <div>
+
+  <!-- 📹 TikTok-style Vidéos -->
+  <div id="videoScreen" class="screen hidden">
+    <h2>🎬 Fil de vidéos</h2>
+    <form onsubmit="addVideo(event)">
+      <input id="videoLink" placeholder="Lien YouTube ou TikTok" />
+      <button>Ajouter</button>
+    </form>
+    <div id="videoFeed" class="tiktok-feed"></div>
+    <button onclick="showScreen('homeScreen')">⬅ Accueil</button>
+  </div>
+
+  <!-- 👤 Profil -->
+  <div id="profileScreen" class="screen hidden">
+    <h2>👤 Mon Profil</h2>
+    <img id="userPhoto" src="" alt="photo" class="avatar" />
+    <p id="userName">Nom : </p>
+    <p id="userSurface">Surface préférée : </p>
+    <p id="userStats">Stats...</p>
+    <button onclick="showScreen('homeScreen')">⬅ Accueil</button>
+  </div>
+
+  <!-- 🎾 Interface Match -->
+  <div id="matchScreen" class="screen hidden">
+    <h2>🎾 Match</h2>
+    <p id="matchTitle">Match en cours</p>
+    <div class="scoreboard">
+      <div><span id="p1Name"></span>: <span id="p1Sets"></span> sets, <span id="p1Games"></span> jeux, <span id="scoreP1"></span></div>
+      <div><span id="p2Name"></span>: <span id="p2Sets"></span> sets, <span id="p2Games"></span> jeux, <span id="scoreP2"></span></div>
+    </div>
     <button onclick="point(1)">+1 Joueur 1</button>
     <button onclick="point(2)">+1 Joueur 2</button>
-    <button onclick="togglePause()">⏸️ Pause</button>
-    <button onclick="endMatch()">❌ Quitter</button>
+    <button onclick="togglePause()">⏸ Pause</button>
+    <p id="matchTimer">⏱️ 00:00</p>
+    <button onclick="showScreen('homeScreen')">⬅ Accueil</button>
   </div>
-  <div id="pauseTimer" class="hidden"></div>
-  <audio id="bipSound" src="sound/bip.mp3"></audio>
-</section>
 
-<!-- STATS -->
-<section id="stats" class="screen hidden">
-  <h2>📊 Statistiques</h2>
-  <div id="statsContent">Chargement…</div>
-</section>
-
-<!-- HISTORIQUE -->
-<section id="history" class="screen hidden">
-  <h2>🧾 Historique</h2>
-  <ul id="historyList"></ul>
-</section>
-
-<!-- PROFILS -->
-<section id="profile" class="screen hidden">
-  <h2>👤 Profils</h2>
-  <label>Nom : <input type="text" id="newProfileName"/></label><br/>
-  <label>Pays : <input type="text" id="newProfileCountry" placeholder="FR"/></label><br/>
-  <label>Surface préférée : 
-    <select id="newProfileSurface">
-      <option value="Dur">Dur</option>
-      <option value="Gazon">Gazon</option>
-      <option value="Terre battue">Terre battue</option>
-    </select>
-  </label><br/>
-  <button onclick="createProfile()">Créer / Mettre à jour</button>
-  <ul id="profileList"></ul>
-</section>
-
-<!-- ONGLET VIDÉOS -->
-<section id="videos" class="screen hidden">
-  <h2>📹 Vidéos des utilisateurs</h2>
-  <input type="url" id="videoUrl" placeholder="Colle un lien YouTube / TikTok" />
-  <button onclick="addVideo()">📤 Ajouter</button>
-  <div id="videoList"></div>
-</section>
-
-<!-- POPUP VICTOIRE -->
-<div id="winnerPopup">🏆 Victoire !</div>
-
-<!-- SCRIPTS -->
-<script src="app.js"></script>
-<script>
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('service-worker.js').then(() => {
-      console.log("✅ PWA prête");
-    });
-  }
-
-  window.addEventListener("load", () => {
-    const splash = document.getElementById("animatedSplash");
-    setTimeout(() => {
-      splash.style.display = "none";
-    }, 4000);
-  });
-</script>
+  <audio id="bipSound" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" preload="auto"></audio>
 </body>
 </html>
