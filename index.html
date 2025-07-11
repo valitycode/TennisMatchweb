@@ -6,7 +6,15 @@
   <title>Tennis Match Social</title>
   <link rel="manifest" href="/TennisMatchweb/manifest.json" />
   <link rel="stylesheet" href="/TennisMatchweb/style.css" />
-  <script defer src="/TennisMatchweb/app.js" type="module"></script>
+  
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/11.10.0/firebase-storage.js"></script>
+
+  <!-- Ton script -->
+  <script defer src="/TennisMatchweb/app.js"></script>
 </head>
 <body>
 
@@ -67,6 +75,9 @@
     <p id="matchTimer">⏱️ 00:00</p>
     <button onclick="showScreen('homeScreen')">⬅ Accueil</button>
   </div>
+
+  <!-- 🔔 Message d'erreur -->
+  <div id="errorMsg" class="hidden" style="color: red; text-align: center; margin-top: 1em;"></div>
 
   <audio id="bipSound" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" preload="auto"></audio>
 </body>
