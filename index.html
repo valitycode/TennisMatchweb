@@ -4,87 +4,59 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Tennis Match Social</title>
+
+  <!-- Icons + PWA -->
   <link rel="manifest" href="manifest.json" />
+  <link rel="icon" href="icons/icon-192.png" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  <meta name="theme-color" content="#000000"/>
+
+  <!-- Style principal -->
   <link rel="stylesheet" href="style.css" />
 
-  <!-- ✅ Scripts Firebase AVANT app.js -->
-  <script src="https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/11.10.0/firebase-firestore.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/11.10.0/firebase-storage.js"></script>
-
-  <!-- Ton script (doit venir après Firebase) -->
-  <script defer src="app.js"></script>
+  <!-- Firebase (compat) -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
 </head>
 <body>
 
-  <!-- 🔐 Auth -->
-  <div id="authScreen" class="screen">
-    <h1>Tennis Match 🎾</h1>
-    <input type="email" id="authEmail" placeholder="Email" />
-    <input type="password" id="authPassword" placeholder="Mot de passe" />
-    <button onclick="login()">Connexion</button>
-    <button onclick="register()">Créer un compte</button>
-  </div>
-
-  <!-- 🏠 Accueil -->
-  <div id="homeScreen" class="screen hidden">
-    <header>
-      <h2>Bienvenue, <span id="userEmail"></span></h2>
-      <button onclick="logout()">Déconnexion</button>
-    </header>
-    <nav>
-      <button onclick="showScreen('videoScreen')">📹 Vidéos</button>
-      <button onclick="showScreen('profileScreen')">👤 Profil</button>
-      <button onclick="showScreen('matchScreen')">🎾 Match</button>
-    </nav>
-  </div>
-
-  <!-- 📹 TikTok-style Vidéos -->
-  <div id="videoScreen" class="screen hidden">
-    <h2>🎬 Fil de vidéos</h2>
-    <form onsubmit="addVideo(event)">
-      <input id="videoLink" placeholder="Lien YouTube ou TikTok" />
-      <button>Ajouter</button>
-    </form>
-    <div id="videoFeed" class="tiktok-feed"></div>
-    <button onclick="showScreen('homeScreen')">⬅ Accueil</button>
-  </div>
-
-  <!-- 👤 Profil -->
-  <div id="profileScreen" class="screen hidden">
-    <h2>👤 Mon Profil</h2>
-    <img id="userPhoto" src="" alt="photo" class="avatar" />
-    <p id="userName">Nom : </p>
-    <p id="userSurface">Surface préférée : </p>
-    <p id="userStats">Stats...</p>
-    <button onclick="showScreen('homeScreen')">⬅ Accueil</button>
-  </div>
-
-  <!-- 🎾 Interface Match -->
-  <div id="matchScreen" class="screen hidden">
-    <h2>🎾 Match</h2>
-    <p id="matchTitle">Match en cours</p>
-    <div class="scoreboard">
-      <div><span id="p1Name"></span>: <span id="p1Sets"></span> sets, <span id="p1Games"></span> jeux, <span id="scoreP1"></span></div>
-      <div><span id="p2Name"></span>: <span id="p2Sets"></span> sets, <span id="p2Games"></span> jeux, <span id="scoreP2"></span></div>
-    </div>
-    <button onclick="point(1)">+1 Joueur 1</button>
-    <button onclick="point(2)">+1 Joueur 2</button>
-    <button onclick="togglePause()">⏸ Pause</button>
-    <p id="matchTimer">⏱️ 00:00</p>
-    <button onclick="showScreen('homeScreen')">⬅ Accueil</button>
-  </div>
-
-  <!-- 🔔 Message d'erreur -->
-  <div id="errorMsg" class="hidden" style="color: red; text-align: center; margin-top: 1em;"></div>
-
-  <!-- 🔄 Loader animé tennis -->
-  <div id="loader" class="loader hidden">
+  <!-- Loader -->
+  <div id="loader" class="loader">
     <div class="ball"></div>
-    <p>Chargement...</p>
+    <div class="letters">T E N N I S&nbsp;&nbsp;M A T C H</div>
   </div>
 
-  <audio id="bipSound" src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" preload="auto"></audio>
+  <!-- Contenu de l'app -->
+  <div id="app" style="display: none;">
+    <!-- contenu dynamique injecté par app.js -->
+  </div>
+
+  <!-- Firebase Init -->
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyAXdiQUOoesoL6ZpysU_C1IMTKmwW-h8ZU",
+      authDomain: "tennismatchsocial.firebaseapp.com",
+      projectId: "tennismatchsocial",
+      storageBucket: "tennismatchsocial.appspot.com",
+      messagingSenderId: "395364748818",
+      appId: "1:395364748818:web:8826342c2a48b9181252cb",
+      measurementId: "G-10CRCCVLRC"
+    };
+    firebase.initializeApp(firebaseConfig);
+  </script>
+
+  <!-- Script principal -->
+  <script src="app.js"></script>
+
+  <!-- PWA : Service Worker -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('service-worker.js')
+        .then(() => console.log('✅ Service worker enregistré'))
+        .catch(e => console.error('❌ Erreur service worker', e));
+    }
+  </script>
 </body>
 </html>
