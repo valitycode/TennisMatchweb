@@ -3,38 +3,48 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Tennis Match Social</title>
-
-  <!-- Icons + PWA -->
+  <title>Tennis Match</title>
   <link rel="manifest" href="manifest.json" />
-  <link rel="icon" href="icons/icon-192.png" />
-  <link rel="apple-touch-icon" href="icons/icon-192.png" />
-  <meta name="theme-color" content="#000000"/>
-
-  <!-- Style principal -->
   <link rel="stylesheet" href="style.css" />
-
-  <!-- Firebase (compat) -->
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-storage-compat.js"></script>
 </head>
 <body>
 
-  <!-- Loader -->
-  <div id="loader" class="loader">
-    <div class="ball"></div>
-    <div class="letters">T E N N I S&nbsp;&nbsp;M A T C H</div>
+  <!-- Écran de connexion -->
+  <div id="login-screen">
+    <h1>Tennis Match 🎾</h1>
+    <input type="email" id="email" placeholder="Email" />
+    <input type="password" id="password" placeholder="Mot de passe" />
+    <button onclick="login()">Se connecter</button>
+    <p>Pas encore inscrit ? <a href="#" onclick="signup()">Créer un compte</a></p>
   </div>
 
-  <!-- Contenu de l'app -->
-  <div id="app" style="display: none;">
-    <!-- contenu dynamique injecté par app.js -->
+  <!-- Interface App -->
+  <div id="app-screen" style="display: none;">
+    <nav>
+      <button onclick="showPage('home')">🏠 Accueil</button>
+      <button onclick="showPage('match')">🎾 Match</button>
+      <button onclick="showPage('stats')">📊 Stats</button>
+      <button onclick="showPage('videos')">🎥 Vidéos</button>
+      <button onclick="showPage('profil')">👤 Profil</button>
+      <button onclick="logout()">🚪 Déconnexion</button>
+    </nav>
+
+    <main>
+      <section id="home" class="page">Bienvenue sur l’accueil 👋</section>
+      <section id="match" class="page" style="display:none;">Interface de Match</section>
+      <section id="stats" class="page" style="display:none;">Vos Statistiques</section>
+      <section id="videos" class="page" style="display:none;">Vidéos partagées</section>
+      <section id="profil" class="page" style="display:none;">
+        Mon profil : <span id="user-email"></span>
+      </section>
+    </main>
   </div>
 
-  <!-- Firebase Init -->
-  <script>
+  <!-- Firebase SDK + JS -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.10.0/firebase-auth.js";
+
     const firebaseConfig = {
       apiKey: "AIzaSyAXdiQUOoesoL6ZpysU_C1IMTKmwW-h8ZU",
       authDomain: "tennismatchsocial.firebaseapp.com",
@@ -44,19 +54,50 @@
       appId: "1:395364748818:web:8826342c2a48b9181252cb",
       measurementId: "G-10CRCCVLRC"
     };
-    firebase.initializeApp(firebaseConfig);
-  </script>
 
-  <!-- Script principal -->
-  <script src="app.js"></script>
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
 
-  <!-- PWA : Service Worker -->
-  <script>
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('service-worker.js')
-        .then(() => console.log('✅ Service worker enregistré'))
-        .catch(e => console.error('❌ Erreur service worker', e));
+    // Navigation entre sections
+    function showPage(id) {
+      document.querySelectorAll('.page').forEach(p => p.style.display = 'none');
+      document.getElementById(id).style.display = 'block';
     }
+
+    // Login
+    window.login = function () {
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      signInWithEmailAndPassword(auth, email, password)
+        .catch(e => alert("Erreur : " + e.message));
+    };
+
+    // Signup
+    window.signup = function () {
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      createUserWithEmailAndPassword(auth, email, password)
+        .catch(e => alert("Erreur : " + e.message));
+    };
+
+    // Logout
+    window.logout = function () {
+      signOut(auth);
+    };
+
+    // Auth check
+    onAuthStateChanged(auth, user => {
+      if (user) {
+        document.getElementById('login-screen').style.display = 'none';
+        document.getElementById('app-screen').style.display = 'block';
+        document.getElementById('user-email').textContent = user.email;
+        showPage('home');
+      } else {
+        document.getElementById('login-screen').style.display = 'block';
+        document.getElementById('app-screen').style.display = 'none';
+      }
+    });
   </script>
+
 </body>
 </html>
