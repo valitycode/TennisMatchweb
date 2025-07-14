@@ -1,4 +1,4 @@
-// ✅ Initialisation Firebase (sans import)
+// ✅ Config Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyAXdiQUOoesoL6ZpysU_C1IMTKmwW-h8ZU",
   authDomain: "tennismatchsocial.firebaseapp.com",
@@ -9,178 +9,115 @@ const firebaseConfig = {
   measurementId: "G-10CRCCVLRC"
 };
 
-try {
-  firebase.initializeApp(firebaseConfig);
-} catch (e) {
-  document.getElementById('errorMsg').innerText = "Erreur Firebase : " + e.message;
-  document.getElementById('errorMsg').classList.remove("hidden");
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+// ✅ Afficher un écran
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
+  document.getElementById(id).classList.remove('hidden');
 }
 
-const db = firebase.firestore();
-const auth = firebase.auth();
-let userId = null;
+// ✅ Afficher / cacher le loader
+function showLoader(show) {
+  const loader = document.getElementById("loader");
+  if (loader) loader.classList.toggle("hidden", !show);
+}
 
-// 🔐 Authentification
+// ✅ Login
+function login() {
+  const email = document.getElementById("authEmail").value;
+  const pass = document.getElementById("authPassword").value;
+  showLoader(true);
+  auth.signInWithEmailAndPassword(email, pass)
+    .then(() => {
+      showLoader(false);
+    })
+    .catch(err => {
+      showLoader(false);
+      showError(err.message);
+    });
+}
+
+// ✅ Register
+function register() {
+  const email = document.getElementById("authEmail").value;
+  const pass = document.getElementById("authPassword").value;
+  showLoader(true);
+  auth.createUserWithEmailAndPassword(email, pass)
+    .then(() => {
+      showLoader(false);
+    })
+    .catch(err => {
+      showLoader(false);
+      showError(err.message);
+    });
+}
+
+// ✅ Déconnexion
+function logout() {
+  auth.signOut();
+}
+
+// ✅ Affichage erreur
+function showError(msg) {
+  const div = document.getElementById("errorMsg");
+  div.innerText = msg;
+  div.classList.remove("hidden");
+  setTimeout(() => div.classList.add("hidden"), 5000);
+}
+
+// ✅ Auth listener
 auth.onAuthStateChanged(user => {
   if (user) {
-    userId = user.uid;
-    showScreen("homeScreen");
-    document.getElementById("userEmail").innerText = user.email;
-    loadProfile();
+    document.getElementById("userEmail").textContent = user.email;
+    loadProfile(user.uid);
     loadVideos();
+    showScreen("homeScreen");
   } else {
     showScreen("authScreen");
   }
 });
 
-function login() {
-  const email = document.getElementById("authEmail").value;
-  const password = document.getElementById("authPassword").value;
-  auth.signInWithEmailAndPassword(email, password).catch(err => {
-    alert("Erreur connexion : " + err.message);
-  });
+// ✅ Charger vidéos
+function loadVideos() {
+  const feed = document.getElementById("videoFeed");
+  feed.innerHTML = "";
+  db.collection("videos").orderBy("date", "desc").limit(20).get()
+    .then(snapshot => {
+      snapshot.forEach(doc => {
+        const url = doc.data().url;
+        const div = document.createElement("div");
+        div.className = "video-item";
+        div.innerHTML = `<iframe src="${url}" frameborder="0" allowfullscreen></iframe>`;
+        feed.appendChild(div);
+      });
+    });
 }
 
-function register() {
-  const email = document.getElementById("authEmail").value;
-  const password = document.getElementById("authPassword").value;
-  auth.createUserWithEmailAndPassword(email, password).catch(err => {
-    alert("Erreur création : " + err.message);
-  });
-}
-
-function logout() {
-  auth.signOut();
-}
-
-// 📺 Vidéos (TikTok/YouTube)
+// ✅ Ajouter une vidéo
 function addVideo(e) {
   e.preventDefault();
   const url = document.getElementById("videoLink").value;
   if (!url) return;
   db.collection("videos").add({
-    url,
-    uid: userId,
-    date: new Date()
-  });
-  document.getElementById("videoLink").value = "";
-  loadVideos();
-}
-
-function loadVideos() {
-  db.collection("videos").orderBy("date", "desc").onSnapshot(snapshot => {
-    const feed = document.getElementById("videoFeed");
-    feed.innerHTML = "";
-    snapshot.forEach(doc => {
-      const data = doc.data();
-      const container = document.createElement("div");
-      container.className = "videoCard";
-      container.innerHTML = `
-        <iframe src="${data.url.replace('watch?v=', 'embed/')}" frameborder="0" allowfullscreen></iframe>
-      `;
-      feed.appendChild(container);
-    });
+    url: url,
+    date: firebase.firestore.FieldValue.serverTimestamp()
+  }).then(() => {
+    document.getElementById("videoLink").value = "";
+    loadVideos();
   });
 }
 
-// 👤 Profil
-function loadProfile() {
-  db.collection("users").doc(userId).get().then(doc => {
+// ✅ Charger le profil
+function loadProfile(uid) {
+  db.collection("users").doc(uid).get().then(doc => {
     if (doc.exists) {
       const data = doc.data();
-      document.getElementById("userName").innerText = "Nom : " + (data.name || "—");
-      document.getElementById("userSurface").innerText = "Surface préférée : " + (data.surface || "—");
-      document.getElementById("userStats").innerText = data.stats || "Aucune stat encore.";
-      document.getElementById("userPhoto").src = data.photo || "https://via.placeholder.com/100";
+      document.getElementById("userName").textContent = "Nom : " + (data.name || "Inconnu");
+      document.getElementById("userSurface").textContent = "Surface préférée : " + (data.surface || "—");
+      document.getElementById("userStats").textContent = data.stats || "Pas encore de stats.";
     }
   });
-}
-
-// 🎾 Match (scoring)
-let matchState = {
-  p1: 0,
-  p2: 0,
-  games1: 0,
-  games2: 0,
-  sets1: 0,
-  sets2: 0,
-  paused: false,
-  timerStart: null
-};
-
-function point(player) {
-  if (matchState.paused) return;
-  if (player === 1) matchState.p1++;
-  else matchState.p2++;
-
-  // Simple scoring
-  if (matchState.p1 >= 4 && matchState.p1 - matchState.p2 >= 2) {
-    matchState.games1++;
-    matchState.p1 = 0;
-    matchState.p2 = 0;
-  } else if (matchState.p2 >= 4 && matchState.p2 - matchState.p1 >= 2) {
-    matchState.games2++;
-    matchState.p1 = 0;
-    matchState.p2 = 0;
-  }
-
-  if (matchState.games1 >= 6 && matchState.games1 - matchState.games2 >= 2) {
-    matchState.sets1++;
-    matchState.games1 = 0;
-    matchState.games2 = 0;
-  } else if (matchState.games2 >= 6 && matchState.games2 - matchState.games1 >= 2) {
-    matchState.sets2++;
-    matchState.games1 = 0;
-    matchState.games2 = 0;
-  }
-
-  updateMatchUI();
-}
-
-function updateMatchUI() {
-  document.getElementById("p1Name").innerText = "Joueur 1";
-  document.getElementById("p2Name").innerText = "Joueur 2";
-  document.getElementById("scoreP1").innerText = convertScore(matchState.p1);
-  document.getElementById("scoreP2").innerText = convertScore(matchState.p2);
-  document.getElementById("p1Games").innerText = matchState.games1;
-  document.getElementById("p2Games").innerText = matchState.games2;
-  document.getElementById("p1Sets").innerText = matchState.sets1;
-  document.getElementById("p2Sets").innerText = matchState.sets2;
-}
-
-function convertScore(score) {
-  return ["0", "15", "30", "40", "AV"][score] || "AV";
-}
-
-// 🕒 Pause
-function togglePause() {
-  const paused = !matchState.paused;
-  matchState.paused = paused;
-  const bip = document.getElementById("bipSound");
-
-  if (paused) {
-    document.getElementById("matchTimer").innerText = "Pause : 90 sec";
-    let countdown = 90;
-    const interval = setInterval(() => {
-      countdown--;
-      document.getElementById("matchTimer").innerText = "Pause : " + countdown + " sec";
-      if (countdown === 0) {
-        clearInterval(interval);
-        bip.play();
-        matchState.paused = false;
-        document.getElementById("matchTimer").innerText = "Reprise";
-        setTimeout(() => {
-          document.getElementById("matchTimer").innerText = "";
-        }, 2000);
-      }
-    }, 1000);
-  } else {
-    document.getElementById("matchTimer").innerText = "";
-  }
-}
-
-// 🌐 Navigation
-function showScreen(id) {
-  document.querySelectorAll(".screen").forEach(s => s.classList.add("hidden"));
-  document.getElementById(id).classList.remove("hidden");
 }
